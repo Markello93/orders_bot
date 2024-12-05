@@ -1,0 +1,32 @@
+networks:
+  def_netw:
+    driver: bridge
+
+services:
+  web_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - def_netw
+
+  bot_app:
+    build:
+      context: .
+      dockerfile: Dockerfile_bot
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - def_netw
