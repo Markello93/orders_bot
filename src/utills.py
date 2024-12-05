@@ -1,9 +1,6 @@
 import re
 
 
-
-
-
 def validate_phone(value: str) -> str:
     # Разрешенные символы: цифры, +, -, (, )
     pattern = r"^[\d\+\-\(\)]{1,}$"
