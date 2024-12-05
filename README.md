@@ -68,12 +68,12 @@ docker compose -f docker-compose_bot.yml up -d
 2. **Отправка уведомления**  
    **Метод**: `POST`  
    **URL**: `/test/send_chat`  
-   Принимает идентификатор пользователя и сообщение.
+   Принимает идентификатор пользователя и сообщение. В тестовом API структура json представлена в модели **SendChatRequest** в файле `api_routes/py_models`.
     **Пример запроса**:  
       ```json
     { 
-         "chat_id": int,
-         "message":json
+         "chat_id": 12345,
+         "message": {"order_id": "string","address": "string"}
     }
       ```
     **Пример ответа**:
