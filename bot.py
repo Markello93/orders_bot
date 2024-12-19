@@ -1,9 +1,17 @@
 import asyncio
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Message,
+    KeyboardButton,
+)
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+
 from src.core.settings import settings
 from aiogram import Bot, Dispatcher, types
 from dotenv import load_dotenv
@@ -26,31 +34,32 @@ class Authorization(StatesGroup):
 @router.message(CommandStart())
 async def process_start_command(message: types.Message, state: FSMContext):
     """Обрабатывает команду /start, инициирует процесс авторизации."""
+    builder = ReplyKeyboardBuilder()
+    builder.row(types.KeyboardButton(text="Поделиться номером", request_contact=True))
+
     await state.set_state(Authorization.waiting_for_phone_number)
-    await message.reply(
-        "Привет! Пожалуйста, введите ваш номер телефона для авторизации."
+    await message.answer(
+        "Привет! Вы можете поделиться своим номером телефона или ввести его вручную.",
+        reply_markup=builder.as_markup(resize_keyboard=True),
     )
 
 
-@router.message(Authorization.waiting_for_phone_number)
-async def process_phone_number(message: types.Message, state: FSMContext):
-    """Обрабатывает номер телефона, проверяет его на внешнем API."""
-    phone_number = message.text
+@router.message(F.contact, Authorization.waiting_for_phone_number)
+async def process_contact(message: types.Message, state: FSMContext):
+    """Обрабатывает отправленный контакт."""
+    phone_number = message.contact.phone_number
     user_id = message.from_user.id
-    if message.text.lower() == "/cancel":
-        await state.clear()
-        await message.reply(
-            "Процесс авторизации прерван. Если вы хотите авторизоваться используйте команду /start "
-        )
-        return
-    try:
-        validate_phone(phone_number)
-    except ValueError as e:
-        await message.reply(
-            str(e) + " Если вы хотите отменить процесс, используйте команду /cancel."
-        )
-        return
 
+    await message.reply(
+        "Проверяем ваш номер телефона...", reply_markup=ReplyKeyboardRemove()
+    )
+    await authorize_phone(phone_number, user_id, message, state)
+
+
+async def authorize_phone(
+    phone_number: str, user_id: int, message: types.Message, state: FSMContext
+):
+    """Функция для проверки номера телефона через внешний API."""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -59,7 +68,7 @@ async def process_phone_number(message: types.Message, state: FSMContext):
             ) as response:
                 if response.status == 200:
                     data = await response.json()
-                    is_authorized = data.get("authorized", True)
+                    is_authorized = data.get("authorized", False)
 
                     if is_authorized:
                         await message.reply(
@@ -67,17 +76,16 @@ async def process_phone_number(message: types.Message, state: FSMContext):
                         )
                     else:
                         await message.reply(
-                            "Ваш номер телефона не авторизован. Попробуйте снова."
+                            "Ваш номер телефона не зарегистрирован в нашей базе. Пожалуйста обратитесь за помощью в службу поддержки Book-Eat."
                         )
                 else:
                     await message.reply(
                         "Произошла ошибка при проверке номера телефона."
                     )
     except Exception as e:
-        await message.reply(
-            f"Произошла ошибка {e} при проверке номера. Попробуйте позже."
-        )
-    await state.clear()
+        await message.reply(f"Произошла ошибка {e}. Попробуйте позже.")
+    finally:
+        await state.clear()
 
 
 @router.message(Command(commands=["/cancel"]))
@@ -89,16 +97,20 @@ async def cancel_authorization(message: types.Message, state: FSMContext):
 
 @router.message()
 async def ignore_messages(message: types.Message, state: FSMContext):
-    """Игнорирует все сообщения от неавторизованных пользователей."""
+    """Игнорирует любые сообщения, кроме команд /start и /cancel."""
+    if message.text == "/cancel":
+        await cancel_authorization(message, state)
+        return
+
     current_state = await state.get_state()
 
-    if current_state == Authorization.waiting_for_phone_number.state:
+    if current_state:
         await message.reply(
-            "Пожалуйста, введите номер телефона для авторизации. Если хотите отменить, используйте /cancel."
+            "Я вас не понимаю. Пожалуйста, используйте команду /start для начала авторизации или /cancel для отмены."
         )
     else:
         await message.reply(
-            "Если вы хотите начать процесс авторизации, используйте команду /start."
+            "Добро пожаловать в нашего бота. Пожалуйста введите команду /start чтобы начать авторизацию. Если вы уже авторизированны - ожидайте уведомлений о заказах."
         )
 
 
