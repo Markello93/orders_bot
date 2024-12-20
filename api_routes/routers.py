@@ -91,6 +91,7 @@ async def delete_telegram_message(chat_id: int, message_id: int):
     except Exception as e:
         return {"status": 500, "message": f"An error occurred: {str(e)}"}
 
+
 @router.post("/edit_chat")
 async def edit_message(data: EditChatRequest):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
@@ -105,8 +106,7 @@ async def edit_message(data: EditChatRequest):
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(telegram_url,
-                                    data=payload) as response:
+            async with session.post(telegram_url, data=payload) as response:
                 if response.status == 200:
                     response_data = await response.json()
                     return {
