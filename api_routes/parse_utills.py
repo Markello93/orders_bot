@@ -9,10 +9,11 @@ def format_date(date_string):
 
 
 def escape_markdown_v2(text):
-    # Список символов, которые нужно экранировать, кроме '*' (для жирного текста)
-    escape_chars = r"_[]~`>#+=|{}"
-
-    # Экранируем символы, кроме '*'
+    """
+    Экранирует текст для использования в Telegram Markdown V2.
+    """
+    # Символы, которые нужно экранировать для Markdown V2
+    escape_chars = r"_[]~`>#=|{}"
     return re.sub(r"([{}])".format(re.escape(escape_chars)), r"\\\1", text)
 
 
@@ -48,7 +49,10 @@ def parse_order_message(message_data: dict):
     # Если это самовывоз, просто пишем "Самовывоз"
     else:
         delivery_info.append("Самовывоз")
-
+    if delivery_type == "TO_OUTSIDE":
+        delivery_type_text = "На вынос"
+    else:
+        delivery_type_text = "Самовывоз"
     # Собирать информацию о доставке в одну строку
     delivery_info_str = ", ".join(delivery_info) if delivery_info else "Не указано"
 
@@ -83,7 +87,7 @@ def parse_order_message(message_data: dict):
         else "Не указано"
     )
     # Формирование текста сообщения
-    message_text = (
+    message_text = escape_markdown_v2(
         f"📦 *Новый заказ!*\n\n"
         f"📍 *Место*: {place_info}\n"
         f"🔢 *Номер заказа*: {message_data['orderNumber']}\n"
@@ -92,20 +96,20 @@ def parse_order_message(message_data: dict):
         f"🕒 *Время заказа*: {created_at}\n"
         f"👤 *Клиент*: {message_data['customerInfo']['customerName']} "
         f"({message_data['customerInfo']['customerPhone']})\n"
-        f"🚚 *Тип доставки*: {delivery_type}\n"
+        f"🚚 *Тип доставки*: {delivery_type_text}\n"
         f"📍 *Адрес доставки*: {delivery_info_str}\n"
-        f"📍 *Код доставки*: {pickup_code}"
+        f"📍 *Код доставки*: {pickup_code}\n"
         f"📜 *Статус заказа*: {message_data['status']}\n\n"
-        f"🛒 *Состав заказа*:\n{products}\n"
+        f"🛒 *Состав заказа:*\n{products}\n"
         f"💰 *Итого*: {message_data['totalCost']}₽"
     )
     courier_name = message_data["delivery"]["courier"].get("name", None)
     courier_car = message_data["delivery"]["courier"].get("car", None)
     courier_car_number = message_data["delivery"]["courier"].get("carNumber", None)
     if courier_name or courier_car or courier_car_number:
-        message_text += (
-            f"🚘 *Курьер*: {courier_name if courier_name else ''}, "
-            f"Машина курьера*:{courier_car if courier_car else ''} {courier_car_number if courier_car_number else ''}\n"
+        message_text += escape_markdown_v2(
+            f"\n🚘 *Курьер*: {courier_name if courier_name else ''}, "
+            f"Машина курьера: {courier_car if courier_car else ''} {courier_car_number if courier_car_number else ''}\n"
         )
     # Кнопки управления заказом
     inline_keyboard = {
