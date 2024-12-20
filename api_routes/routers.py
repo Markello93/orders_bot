@@ -90,3 +90,36 @@ async def delete_telegram_message(chat_id: int, message_id: int):
                     }
     except Exception as e:
         return {"status": 500, "message": f"An error occurred: {str(e)}"}
+
+@router.post("/edit_chat")
+async def edit_message(data: EditChatRequest):
+    telegram_url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
+    dict_data = data.dict()
+    text, inline_keyboard = parse_order_message(dict_data["new_text"])
+    payload = {
+        "chat_id": data.chat_id,
+        "message_id": data.message_id,
+        "text": text,
+        "reply_markup": json.dumps(inline_keyboard),
+        "parse_mode": "Markdown",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(telegram_url,
+                                    data=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    return {
+                        "status": 200,
+                        "message": "Message edited successfully.",
+                        "response_data": response_data,
+                        # Для проверки результата
+                    }
+                else:
+                    error_message = await response.text()
+                    return {
+                        "status": response.status,
+                        "message": f"Failed to edit message: {error_message}",
+                    }
+    except Exception as e:
+        return {"status": 500, "message": f"An error occurred: {str(e)}"}
