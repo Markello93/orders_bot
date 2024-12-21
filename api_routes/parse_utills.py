@@ -24,6 +24,14 @@ def parse_order_message(message_data: dict):
     # Тип доставки
     delivery_type = message_data["delivery"]["type"]
 
+    # Определение текста для типа доставки
+    delivery_type_mapping = {
+        "DELIVERY": "Доставка",
+        "TO_OUTSIDE": "Самовывоз",
+        "ON_PLACE": "На месте",
+    }
+    delivery_type_text = delivery_type_mapping.get(delivery_type, "Неизвестный тип доставки")
+
     # Формируем информацию о доставке, включая только ненулевые значения
     delivery_info = []
     if delivery_type == "DELIVERY":
@@ -41,10 +49,10 @@ def parse_order_message(message_data: dict):
             delivery_info.append(
                 f"статус доставки {message_data['delivery']['status']}"
             )
-    else:
+    elif delivery_type == "TO_OUTSIDE":
         delivery_info.append("Самовывоз")
-
-    delivery_type_text = "На вынос" if delivery_type == "DELIVERY" else "Самовывоз"
+    elif delivery_type == "ON_PLACE":
+        delivery_info.append("На месте")
 
     # Собирать информацию о доставке в одну строку
     delivery_info_str = ", ".join(delivery_info) if delivery_info else "Не указано"
