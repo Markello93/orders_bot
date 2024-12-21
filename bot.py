@@ -5,10 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
-    ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
-    Message,
-    KeyboardButton,
 )
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
@@ -17,7 +14,6 @@ from aiogram import Bot, Dispatcher, types
 from dotenv import load_dotenv
 import aiohttp
 
-from src.utills import validate_phone
 
 load_dotenv()
 EXTERNAL_API_URL = settings.EXTERNAL_API_URL
