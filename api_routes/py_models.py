@@ -51,9 +51,6 @@ class OrderMessage(BaseModel):
     delivery: Delivery
     products: List[Product]
     order_link: str
-    order_cancel: str
-    order_approve: str
-    order_completed: str
     places: Place
     orderNumber: int
     status: str
