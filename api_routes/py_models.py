@@ -24,7 +24,7 @@ class CustomerInfo(BaseModel):
 
 
 class Delivery(BaseModel):
-    id: str
+    id: str = None
     address: Optional[str] = None
     flat: Optional[str] = None
     floor: Optional[str] = None

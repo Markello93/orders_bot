@@ -1,4 +1,7 @@
 import asyncio
+from urllib.parse import urlencode, urljoin
+
+import requests
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -17,10 +20,14 @@ import aiohttp
 
 load_dotenv()
 EXTERNAL_API_URL = settings.EXTERNAL_API_URL
+API_CHECK_PHONE = settings.EXTERNAL_API_CHECK_ACCESS
 bot_key = settings.BOT
 bot = Bot(token=bot_key)
 
 router = Router()
+
+dp = Dispatcher(storage=MemoryStorage())
+dp.include_router(router)
 
 
 class Authorization(StatesGroup):
@@ -59,7 +66,7 @@ async def authorize_phone(
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                EXTERNAL_API_URL,
+                API_CHECK_PHONE,
                 json={"phone_number": phone_number, "user_id": user_id},
             ) as response:
                 if response.status == 200:
@@ -110,9 +117,67 @@ async def ignore_messages(message: types.Message, state: FSMContext):
         )
 
 
+async def send_request_to_url(url, params=None):
+    """Отправка HTTP-запроса на внешний URL."""
+    try:
+        external_url = urljoin(EXTERNAL_API_URL, url)
+        if params:
+            query_string = urlencode(params)
+            external_url = f"{external_url}?{query_string}"
+        async with aiohttp.ClientSession() as session:
+            async with session.put(external_url) as response:
+                if response.status == 200:
+                    return {"success": True, "message": "Request successful"}
+                else:
+                    return {
+                        "success": False,
+                        "message": f"Failed to send request. Status: {response.status}",
+                    }
+    except Exception as e:
+        return {"success": False, "message": f"Error sending request: {e}"}
+
+
+@dp.callback_query(lambda c: c.data and c.data.startswith("order"))
+async def handle_order_callback(callback_query: types.CallbackQuery):
+    """Обрабатывает нажатие кнопки для подтверждения/отмены заказа."""
+    callback_data = callback_query.data
+    print(callback_data)
+
+    try:
+        action, order_id = callback_data.split(":", 1)
+    except ValueError:
+        await callback_query.answer("Некорректный формат данных")
+        return
+
+    if action == "order_confirm":
+        status = "IN_PROGRESS"
+        message = "Вы подтвердили заказ, ожидайте уведомлений."
+    elif action == "order_cancel":
+        status = "CANCELLED_BY_PROVIDER"
+        message = "Вы отменили заказ."
+    elif action == "order_complete":
+        status = "COMPLETED"
+        message = "Вы выполнили заказ."
+    else:
+        status = "UNKNOWN"
+        message = "Произошла ошибка при обработке статуса заказа"
+
+    url = f"/v1/orders/{order_id}/status?status={status}"
+    response = await send_request_to_url(url)
+
+    if response["success"]:
+        await bot.send_message(callback_query.message.chat.id, message)
+    else:
+        error_message = "Не удалось выполнить действие. Попробуйте позже"
+        await bot.send_message(callback_query.message.chat.id, error_message)
+
+    await callback_query.answer(
+        message if response["success"] else "Действие не выполнено."
+    )
+
+
 async def main() -> None:
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(router)
+
     await dp.start_polling(bot)
 
 

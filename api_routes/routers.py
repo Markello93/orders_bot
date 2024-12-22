@@ -1,7 +1,7 @@
 import json
 
 from dotenv import load_dotenv
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 import aiohttp
 
@@ -11,12 +11,25 @@ from api_routes.parse_utills import parse_order_message
 
 load_dotenv()
 bot_token = settings.BOT
-router = APIRouter(prefix="/test", tags=["test API endpoints"])
+router = APIRouter(prefix="/v1", tags=["test API endpoints"])
+
+
+@router.put("/orders/{order_id}/status")
+async def update_order_status(
+    order_id: str,
+    status: str = Query(
+        ...,
+        description="Статус заказа",
+        regex="^(IN_PROGRESS|CANCELLED_BY_PROVIDER|COMPLETED)$",
+    ),
+):
+    print(f"запрос по  id {order_id} получили, статус : {status}")
+    return {"message": f"запрос по  id {order_id} получили, статус : {status}"}
 
 
 @router.post("/check_access")
 async def send_from_telegram(data: InputData):
-    numbers = ["12345", "43213", "22333"]
+    numbers = ["12345", "43213", "22333", "+79213678992"]
     if data.phone_number in numbers:
         print(f"пользователь с user_id:{data.user_id}")
         return {"authorized": True}
@@ -24,10 +37,9 @@ async def send_from_telegram(data: InputData):
 
 
 @router.post("/send_chat")
-async def send_to_telegram(data: SendChatRequest):
-
+async def send_to_telegram(dict_data: dict):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    dict_data = data.dict()
+    # dict_data = data.dict()
     text = parse_order_message(dict_data["message"])
     status = dict_data["message"]["status"]
     inline_keyboard = None
@@ -38,11 +50,11 @@ async def send_to_telegram(data: SendChatRequest):
                 [
                     {
                         "text": "✅ Подтвердить заказ",
-                        "url": dict_data["message"]["order_approve"],
+                        "callback_data": f"order_confirm:{dict_data['message']['id']}",
                     },
                     {
                         "text": "❌ Отменить заказ",
-                        "url": dict_data["message"]["order_cancel"],
+                        "callback_data": f"order_cancel:{dict_data['message']['id']}",
                     },
                 ]
             ]
@@ -53,7 +65,7 @@ async def send_to_telegram(data: SendChatRequest):
                 [
                     {
                         "text": "✅ Выполнить заказ",
-                        "url": dict_data["message"]["order_completed"],
+                        "callback_data": f"order_complete:{dict_data['message']['id']}",
                     },
                 ]
             ]
@@ -121,9 +133,9 @@ async def delete_telegram_message(chat_id: int, message_id: int):
 
 
 @router.post("/edit_chat")
-async def edit_message(data: EditChatRequest):
+async def edit_message(dict_data: dict):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
-    dict_data = data.dict()
+    # dict_data = data.dict()
     text = parse_order_message(dict_data["message"])
     status = dict_data["message"]["status"]
     inline_keyboard = None
@@ -134,11 +146,11 @@ async def edit_message(data: EditChatRequest):
                 [
                     {
                         "text": "✅ Подтвердить заказ",
-                        "url": dict_data["message"]["order_approve"],
+                        "callback_data": f"order_confirm:{dict_data['message']['id']}",
                     },
                     {
                         "text": "❌ Отменить заказ",
-                        "url": dict_data["message"]["order_cancel"],
+                        "callback_data": f"order_cancel:{dict_data['message']['id']}",
                     },
                 ]
             ]
@@ -149,7 +161,7 @@ async def edit_message(data: EditChatRequest):
                 [
                     {
                         "text": "✅ Выполнить заказ",
-                        "url": dict_data["message"]["order_completed"],
+                        "callback_data": f"order_complete:{dict_data['message']['id']}",
                     },
                 ]
             ]
@@ -171,7 +183,6 @@ async def edit_message(data: EditChatRequest):
                         "status": 200,
                         "message": "Message edited successfully.",
                         "response_data": response_data,
-                        # Для проверки результата
                     }
                 else:
                     error_message = await response.text()
