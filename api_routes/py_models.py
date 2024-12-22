@@ -67,7 +67,7 @@ class SendChatRequest(BaseModel):
 class EditChatRequest(BaseModel):
     chat_id: int
     message_id: int
-    new_text: OrderMessage
+    message: OrderMessage
 
 
 class InputData(BaseModel):

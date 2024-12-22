@@ -87,7 +87,7 @@ async def send_to_telegram(data: SendChatRequest):
         return {"status": 500, "message": f"An error occurred: {str(e)}"}
 
 
-@router.post("/delete_message")
+@router.delete("/delete_message")
 async def delete_telegram_message(chat_id: int, message_id: int):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/deleteMessage"
     payload = {
@@ -124,14 +124,44 @@ async def delete_telegram_message(chat_id: int, message_id: int):
 async def edit_message(data: EditChatRequest):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
     dict_data = data.dict()
-    text, inline_keyboard = parse_order_message(dict_data["new_text"])
+    text = parse_order_message(dict_data["message"])
+    status = dict_data["message"]["status"]
+    inline_keyboard = None
+
+    if status == "PAID":
+        inline_keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Подтвердить заказ",
+                        "url": dict_data["message"]["order_approve"],
+                    },
+                    {
+                        "text": "❌ Отменить заказ",
+                        "url": dict_data["message"]["order_cancel"],
+                    },
+                ]
+            ]
+        }
+    elif status == "IN_PROGRESS":
+        inline_keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Выполнить заказ",
+                        "url": dict_data["message"]["order_completed"],
+                    },
+                ]
+            ]
+        }
     payload = {
         "chat_id": data.chat_id,
         "message_id": data.message_id,
         "text": text,
-        "reply_markup": json.dumps(inline_keyboard),
         "parse_mode": "Markdown",
     }
+    if inline_keyboard:
+        payload["reply_markup"] = json.dumps(inline_keyboard)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(telegram_url, data=payload) as response:
