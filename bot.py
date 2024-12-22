@@ -141,7 +141,6 @@ async def send_request_to_url(url, params=None):
 async def handle_order_callback(callback_query: types.CallbackQuery):
     """Обрабатывает нажатие кнопки для подтверждения/отмены заказа."""
     callback_data = callback_query.data
-    print(callback_data)
 
     try:
         action, order_id = callback_data.split(":", 1)

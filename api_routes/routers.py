@@ -29,7 +29,7 @@ async def update_order_status(
 
 @router.post("/check_access")
 async def send_from_telegram(data: InputData):
-    numbers = ["12345", "43213", "22333", "+79213678992"]
+    numbers = ["12345", "43213", "22333"]
     if data.phone_number in numbers:
         print(f"пользователь с user_id:{data.user_id}")
         return {"authorized": True}
@@ -71,7 +71,7 @@ async def send_to_telegram(dict_data: dict):
             ]
         }
     payload = {
-        "chat_id": data.chat_id,
+        "chat_id": dict_data["chat_id"],
         "text": text,
         "parse_mode": "Markdown",
     }
@@ -167,8 +167,8 @@ async def edit_message(dict_data: dict):
             ]
         }
     payload = {
-        "chat_id": data.chat_id,
-        "message_id": data.message_id,
+        "chat_id": dict_data["chat_id"],
+        "message_id": dict_data["message_id"],
         "text": text,
         "parse_mode": "Markdown",
     }
