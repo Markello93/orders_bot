@@ -14,7 +14,7 @@ class Product(BaseModel):
     amount: int
     title: str
     price: float
-    additions: Optional[List[AdditionProduct]] = None
+    additions: Optional[List[AdditionProduct]] = []
 
 
 class CustomerInfo(BaseModel):
@@ -24,6 +24,7 @@ class CustomerInfo(BaseModel):
 
 
 class Delivery(BaseModel):
+    id: str
     address: Optional[str] = None
     flat: Optional[str] = None
     floor: Optional[str] = None
@@ -35,7 +36,7 @@ class Delivery(BaseModel):
 
 
 class Place(BaseModel):
-    id: str
+    id: str = None
     title: str
 
 

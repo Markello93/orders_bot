@@ -7,7 +7,7 @@ import aiohttp
 
 from api_routes.py_models import EditChatRequest, InputData, SendChatRequest
 from src.core.settings import settings
-from api_routes.parse_utills import escape_markdown_v2, parse_order_message
+from api_routes.parse_utills import parse_order_message
 
 load_dotenv()
 bot_token = settings.BOT
@@ -16,7 +16,6 @@ router = APIRouter(prefix="/test", tags=["test API endpoints"])
 
 @router.post("/check_access")
 async def send_from_telegram(data: InputData):
-    print(data)
     numbers = ["12345", "43213", "22333"]
     if data.phone_number in numbers:
         print(f"пользователь с user_id:{data.user_id}")
@@ -29,14 +28,43 @@ async def send_to_telegram(data: SendChatRequest):
 
     telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     dict_data = data.dict()
-    text, inline_keyboard = parse_order_message(dict_data["message"])
-    # escaped_message = escape_markdown_v2(text)
+    text = parse_order_message(dict_data["message"])
+    status = dict_data["message"]["status"]
+    inline_keyboard = None
+
+    if status == "PAID":
+        inline_keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Подтвердить заказ",
+                        "url": dict_data["message"]["order_approve"],
+                    },
+                    {
+                        "text": "❌ Отменить заказ",
+                        "url": dict_data["message"]["order_cancel"],
+                    },
+                ]
+            ]
+        }
+    elif status == "IN_PROGRESS":
+        inline_keyboard = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Выполнить заказ",
+                        "url": dict_data["message"]["order_completed"],
+                    },
+                ]
+            ]
+        }
     payload = {
         "chat_id": data.chat_id,
         "text": text,
-        "reply_markup": json.dumps(inline_keyboard),
         "parse_mode": "Markdown",
     }
+    if inline_keyboard:
+        payload["reply_markup"] = json.dumps(inline_keyboard)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(telegram_url, json=payload) as response:
