@@ -3,15 +3,25 @@ from datetime import datetime
 
 
 def format_date(date_string):
+    """Форматирует дату в виде "ДД Мес ГГ:ММ" с русскими сокращениями месяцев.
+
+    Args:
+        date_string: Строка с датой в ISO 8601 формате.
+
+    Returns:
+        Строка с форматированной датой.
+    """
+
     date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-    return date_obj.strftime("%Y-%m-%d %H:%M")
+    months_ru = ["янв.", "февр.", "марта", "апр.", "мая", "Июня", "Июля", "авг.", "сент.", "октб.", "нояб.", "дек."]
+    return f"{date_obj.day} {months_ru[date_obj.month - 1]} {date_obj.year} {date_obj.hour}:{date_obj.minute}"
 
 
 def escape_markdown_v2(text):
     """
     Экранирует текст для использования в Telegram Markdown V2.
     """
-    escape_chars = r"_[]~`>#=|{}"
+    escape_chars = r"[]~`>#=|{}"
     return re.sub(r"([{}])".format(re.escape(escape_chars)), r"\\\1", text)
 
 
@@ -34,66 +44,63 @@ def parse_order_message(message_data: dict):
     delivery_info = []
     if delivery_type == "DELIVERY":
         delivery_address = message_data["delivery"].get("address", "Адрес не указан")
-        delivery_info.append(f"📍 *Адрес доставки*: {delivery_address}")
-
+        delivery_info.append(f"🗺  Адрес доставки: *{delivery_address}*\n")
+        delivery_info.append(
+            f"🔐 Код для курьера: *{message_data['delivery']['pickupCode']}*\n"
+        )
         additional_info = [
             (
-                f"кв. {message_data['delivery']['flat']}"
+                f"кв. *{message_data['delivery']['flat']}*"
                 if message_data["delivery"].get("flat")
                 else ""
             ),
             (
-                f"этаж {message_data['delivery']['floor']}"
+                f"этаж *{message_data['delivery']['floor']}*"
                 if message_data["delivery"].get("floor")
                 else ""
             ),
             (
-                f"подъезд {message_data['delivery']['porch']}"
+                f"подъезд *{message_data['delivery']['porch']}*"
                 if message_data["delivery"].get("porch")
                 else ""
             ),
             (
-                f"код двери {message_data['delivery']['doorCode']}"
+                f"код двери *{message_data['delivery']['doorCode']}*"
                 if message_data["delivery"].get("doorCode")
                 else ""
             ),
-            (
-                f"статус доставки: {message_data['delivery']['status']}"
-                if message_data["delivery"].get("status")
-                else ""
-            ),
+
         ]
         additional_info = [info for info in additional_info if info]
         if additional_info:
             delivery_info.append(
                 "Дополнительные сведения: " + ", ".join(additional_info)
             )
-
-    elif delivery_type == "TO_OUTSIDE":
-        if message_data["delivery"].get("pickupCode"):
-            delivery_info.append(
-                f"📍 *Код самовывоза*: {message_data['delivery']['pickupCode']}"
-            )
+    elif delivery_type in {"TO_OUTSIDE", "ON_PLACE"}:
+        restaurant_address = message_data.get("restaurantAddress",
+                                              "Адрес ресторана не указан")
+        delivery_info.append(f"📍 Адрес ресторана: {restaurant_address}")
 
     # Формирование списка продуктов
     products = []
     for product in message_data["products"]:
-        product_line = (
-            f"- {product['title']} (x{product['amount']}) — {product['price']}₽"
-        )
+        product_name = f"*{product['title']}*"
+        weight_info = f" (вес: {product['weight']})" if product.get(
+            "weight") else ""
+        product_details = f"*(х{product['amount']})* — {product['price']} ₽"
+        product_line = f"▫️ {product_name}{weight_info} {product_details}"
         if product.get("additions"):
-            # Добавляем заголовок "Добавки"
             additions = "\n".join(
                 [
-                    f"  └➕ {add['title']} (x{add['amount']}) — {add['price']}₽"
+                    f"     + {add['title']} (х{add['amount']}) — {add['price']} ₽"
                     for add in product["additions"]
                 ]
             )
-            product_line += f"\n*Добавки:*\n{additions}"
+            product_line += f"\n{additions}"
         products.append(product_line)
+
     products_text = "\n".join(products)
 
-    # Информация о месте
     place = message_data["places"]
     place_title = place.get("title", "Место не указано")
     ready_time = (
@@ -101,36 +108,36 @@ def parse_order_message(message_data: dict):
         if message_data.get("readyTime")
         else "Не указано"
     )
-    created_at = (
-        format_date(message_data["createdAt"])
-        if message_data.get("createdAt")
-        else "Не указано"
-    )
 
     # Определение статуса
     status_mapping = {
-        "CANCELLED_BY_PROVIDER": ("❌", "Заказ был отменен провайдером."),
-        "CANCELLED_BY_CLIENT": ("❌", "Заказ был отменен клиентом."),
-        "IN_PROGRESS": ("📦", "Заказ взят в работу!"),
-        "PAID": ("📦", "Новый заказ!"),
+        "CANCELLED_BY_PROVIDER":  "Отменен кассиром.",
+        "CANCELLED_BY_CLIENT": "Отменен клиентом.",
+        "IN_PROGRESS": "Взят в работу",
+        "PAID": "Оплачен",
+        "CANCELED_BY_TIMEOUT": "Заказ отменён - не был взят в работу"
     }
-    emoji, status_text = status_mapping.get(
-        message_data["status"], ("ℹ️", "Статус не определен.")
+    status_text = status_mapping.get(
+        message_data["status"], "Статус не определен"
     )
+    delivery_price_text = ""
+    if message_data['delivery'].get("price"):
+        delivery_price_text = f"🏎  Доставка: {message_data['delivery']['price']} ₽\n"
 
-    # Формирование текста сообщения
     message_text = escape_markdown_v2(
-        f"{emoji} *{status_text}*\n\n"
-        f"📍 *Место*: {place_title}\n"
-        f"🔢 *Номер заказа*: {message_data['orderNumber']}\n"
-        f"👥 *Количество персон*: {message_data.get('personsCount', 'не указано')}\n"
-        f"🕒 *Время выдачи*: {ready_time}\n"
-        f"🕒 *Время заказа*: {created_at}\n"
-        f"👤 *Клиент*: {message_data['customerInfo']['customerName']} ({message_data['customerInfo']['customerPhone']})\n"
-        f"🚚 *Тип доставки*: {delivery_type_text}\n"
-        f"{''.join(delivery_info)}\n"
-        f"🛒 *Состав заказа:*\n{products_text}\n"
-        f"💰 *Итого*: {message_data['totalCost']}₽"
+        f"Заказ №: *{message_data['orderNumber']}*\n"
+        f"🕒 Время выдачи: *{ready_time}*\n"
+        f"📦 Способ получения: *{delivery_type_text}*\n"
+        f"💳 Статус заказа: *{status_text}*\n"
+        f"👤 Клиент: *{message_data['customerInfo']['customerName']}* "
+        f"({message_data['customerInfo']['customerPhone']})\n"
+        f"👥 Количество персон: *{message_data.get('personsCount', 'не указано')}*\n\n"
+        f"📍 Место: {place_title}\n"
+        f"{''.join(delivery_info)}\n\n"
+        f"🛒 Состав заказа:\n"
+        f"{products_text}\n"
+        f"{delivery_price_text}"
+        f"💰 Итого: {message_data['totalCost']} ₽"
     )
 
     return message_text

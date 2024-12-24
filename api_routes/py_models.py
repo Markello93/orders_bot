@@ -54,6 +54,7 @@ class OrderMessage(BaseModel):
     places: Place
     orderNumber: int
     status: str
+    restaurantAddress: str
 
 
 class SendChatRequest(BaseModel):
