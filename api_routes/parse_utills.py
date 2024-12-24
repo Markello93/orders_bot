@@ -121,7 +121,7 @@ def parse_order_message(message_data: dict):
         message_data["status"], "Статус не определен"
     )
     delivery_price_text = ""
-    if message_data['delivery'].get("price"):
+    if message_data['delivery'].get("price") and delivery_type == "DELIVERY":
         delivery_price_text = f"🏎  Доставка: {message_data['delivery']['price']} ₽\n"
 
     message_text = escape_markdown_v2(
