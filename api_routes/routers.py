@@ -23,12 +23,12 @@ async def update_order_status(
         regex="^(IN_PROGRESS|CANCELLED_BY_PROVIDER|COMPLETED)$",
     ),
 ):
-    print(f"запрос по  id {order_id} получили, статус : {status}")
     return {"message": f"запрос по  id {order_id} получили, статус : {status}"}
 
 
 @router.post("/check_access")
 async def send_from_telegram(data: InputData):
+    print(data)
     numbers = ["12345", "43213", "22333"]
     if data.phone_number in numbers:
         print(f"пользователь с user_id:{data.user_id}")
@@ -40,44 +40,80 @@ async def send_from_telegram(data: InputData):
 async def send_to_telegram(dict_data: dict):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     # dict_data = data.dict()
-    text = parse_order_message(dict_data["message"])
-    status = dict_data["message"]["status"]
-    inline_keyboard = None
-
-    if status == "PAID":
-        inline_keyboard = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "✅ Подтвердить заказ",
-                        "callback_data": f"order_confirm:{dict_data['message']['id']}",
-                    },
-                    {
-                        "text": "❌ Отменить заказ",
-                        "callback_data": f"order_cancel:{dict_data['message']['id']}",
-                    },
-                ]
-            ]
-        }
-    elif status == "IN_PROGRESS":
-        inline_keyboard = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "✅ Выполнить заказ",
-                        "callback_data": f"order_complete:{dict_data['message']['id']}",
-                    },
-                ]
-            ]
-        }
-    payload = {
-        "chat_id": dict_data["chat_id"],
-        "text": text,
-        "parse_mode": "Markdown",
-    }
-    if inline_keyboard:
-        payload["reply_markup"] = json.dumps(inline_keyboard)
     try:
+        if (
+            not isinstance(dict_data, dict)
+            or "message" not in dict_data
+            or "chat_id" not in dict_data
+        ):
+            return {
+                "status": 400,
+                "message": "Invalid data format: missing 'message' or 'chat_id'.",
+            }
+
+        required_keys = [
+            "delivery",
+            "products",
+            "places",
+            "status",
+            "orderNumber",
+            "customerInfo",
+            "totalCost",
+        ]
+        message_data = dict_data["message"]
+        missing_keys = [key for key in required_keys if key not in message_data]
+        if missing_keys:
+            return {
+                "status": 400,
+                "message": f"Invalid message data: missing keys {', '.join(missing_keys)}.",
+            }
+
+        # Формируем текст сообщения
+        text = parse_order_message(message_data)
+        if "Ошибка" in text:  # Если парсер вернул ошибку
+            return {"status": 400, "message": f"Message parsing failed: {text}"}
+
+        # Определяем кнопки для сообщения
+        status = message_data["status"]
+        inline_keyboard = None
+
+        if status == "PAID":
+            inline_keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "✅ Взять в работу",
+                            "callback_data": f"order_confirm:{message_data['orderNumber']}",
+                        },
+                        {
+                            "text": "❌ Отменить заказ",
+                            "callback_data": f"order_cancel:{message_data['orderNumber']}",
+                        },
+                    ]
+                ]
+            }
+        elif status == "IN_PROGRESS":
+            inline_keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "✅ Выполнить заказ",
+                            "callback_data": f"order_complete:{message_data['orderNumber']}",
+                        },
+                    ]
+                ]
+            }
+
+        # Формируем payload для Telegram
+        payload = {
+            "chat_id": dict_data["chat_id"],
+            "text": text,
+            "parse_mode": "Markdown",
+        }
+        if inline_keyboard:
+            payload["reply_markup"] = json.dumps(inline_keyboard)
+
+        # Отправка сообщения в Telegram
         async with aiohttp.ClientSession() as session:
             async with session.post(telegram_url, json=payload) as response:
                 if response.status == 200:
@@ -136,45 +172,71 @@ async def delete_telegram_message(chat_id: int, message_id: int):
 async def edit_message(dict_data: dict):
     telegram_url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
     # dict_data = data.dict()
-    text = parse_order_message(dict_data["message"])
-    status = dict_data["message"]["status"]
-    inline_keyboard = None
-
-    if status == "PAID":
-        inline_keyboard = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "✅ Подтвердить заказ",
-                        "callback_data": f"order_confirm:{dict_data['message']['id']}",
-                    },
-                    {
-                        "text": "❌ Отменить заказ",
-                        "callback_data": f"order_cancel:{dict_data['message']['id']}",
-                    },
-                ]
-            ]
-        }
-    elif status == "IN_PROGRESS":
-        inline_keyboard = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "✅ Выполнить заказ",
-                        "callback_data": f"order_complete:{dict_data['message']['id']}",
-                    },
-                ]
-            ]
-        }
-    payload = {
-        "chat_id": dict_data["chat_id"],
-        "message_id": dict_data["message_id"],
-        "text": text,
-        "parse_mode": "Markdown",
-    }
-    if inline_keyboard:
-        payload["reply_markup"] = json.dumps(inline_keyboard)
     try:
+        if (
+            not isinstance(dict_data, dict)
+            or "message" not in dict_data
+            or "chat_id" not in dict_data
+        ):
+            return {
+                "status": 400,
+                "message": "Invalid data format: missing 'message' or 'chat_id'.",
+            }
+
+        required_keys = [
+            "delivery",
+            "products",
+            "places",
+            "status",
+            "orderNumber",
+            "customerInfo",
+            "totalCost",
+        ]
+        message_data = dict_data["message"]
+        missing_keys = [key for key in required_keys if key not in message_data]
+        if missing_keys:
+            return {
+                "status": 400,
+                "message": f"Invalid message data: missing keys {', '.join(missing_keys)}.",
+            }
+        text = parse_order_message(dict_data["message"])
+        status = dict_data["message"]["status"]
+        inline_keyboard = None
+
+        if status == "PAID":
+            inline_keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "✅ Подтвердить заказ",
+                            "callback_data": f"order_confirm:{dict_data['message']['id']}",
+                        },
+                        {
+                            "text": "❌ Отменить заказ",
+                            "callback_data": f"order_cancel:{dict_data['message']['id']}",
+                        },
+                    ]
+                ]
+            }
+        elif status == "IN_PROGRESS":
+            inline_keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "✅ Выполнить заказ",
+                            "callback_data": f"order_complete:{dict_data['message']['id']}",
+                        },
+                    ]
+                ]
+            }
+        payload = {
+            "chat_id": dict_data["chat_id"],
+            "message_id": dict_data["message_id"],
+            "text": text,
+            "parse_mode": "Markdown",
+        }
+        if inline_keyboard:
+            payload["reply_markup"] = json.dumps(inline_keyboard)
         async with aiohttp.ClientSession() as session:
             async with session.post(telegram_url, data=payload) as response:
                 if response.status == 200:
