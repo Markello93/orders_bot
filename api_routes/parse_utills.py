@@ -116,7 +116,7 @@ def parse_order_message(message_data: dict):
         "IN_PROGRESS": "Взят в работу",
         "PAID": "Оплачен",
         "CANCELED_BY_TIMEOUT": "Заказ отменён - не был взят в работу",
-        "COMPLETED": "Выполнен",
+        "COMPLETED": "Выполнен"
     }
     status_text = status_mapping.get(
         message_data["status"], "Статус не определен"
