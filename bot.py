@@ -41,7 +41,7 @@ async def process_start_command(message: types.Message, state: FSMContext):
 
     await state.set_state(Authorization.waiting_for_phone_number)
     await message.answer(
-        "Привет! Вы можете поделиться своим номером телефона или ввести его вручную.",
+        "Для начала работы с ботом нажмите 'поделиться номером'.",
         reply_markup=builder.as_markup(resize_keyboard=True),
     )
 

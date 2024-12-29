@@ -11,10 +11,9 @@ def format_date(date_string):
     Returns:
         Строка с форматированной датой.
     """
-
     date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-    months_ru = ["янв.", "февр.", "марта", "апр.", "мая", "Июня", "Июля", "авг.", "сент.", "октб.", "нояб.", "дек."]
-    return f"{date_obj.day} {months_ru[date_obj.month - 1]} {date_obj.year} {date_obj.hour}:{date_obj.minute}"
+    months_ru = ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "октб.", "нояб.", "дек."]
+    return f"{date_obj.day} {months_ru[date_obj.month - 1]} {date_obj.year} {date_obj.hour:02}:{date_obj.minute:02}"
 
 
 def escape_markdown_v2(text):
