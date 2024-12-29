@@ -1,9 +1,9 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def format_date(date_string):
-    """Форматирует дату в виде "ДД Мес ГГ:ММ" с русскими сокращениями месяцев.
+    """Форматирует дату в виде "ДД Мес ГГ:ММ" с русскими сокращениями месяцев, конвертируя в МСК.
 
     Args:
         date_string: Строка с датой в ISO 8601 формате.
@@ -11,8 +11,17 @@ def format_date(date_string):
     Returns:
         Строка с форматированной датой.
     """
+    # Парсим строку в объект datetime
     date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-    months_ru = ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля", "авг.", "сент.", "октб.", "нояб.", "дек."]
+
+    # Добавляем 3 часа для перевода времени в Московское
+    date_obj = date_obj + timedelta(hours=3)
+
+    # Список сокращений месяцев на русском языке
+    months_ru = ["янв.", "февр.", "марта", "апр.", "мая", "июня", "июля",
+                 "авг.", "сент.", "октб.", "нояб.", "дек."]
+
+    # Форматируем и возвращаем строку
     return f"{date_obj.day} {months_ru[date_obj.month - 1]} {date_obj.year} {date_obj.hour:02}:{date_obj.minute:02}"
 
 
