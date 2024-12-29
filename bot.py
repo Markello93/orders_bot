@@ -120,7 +120,6 @@ async def send_request_to_url(url, params=None):
     """Отправка HTTP-запроса на внешний URL."""
     try:
         external_url = urljoin(EXTERNAL_API_URL, url)
-        print(external_url)
         if params:
             query_string = urlencode(params)
             external_url = f"{external_url}?{query_string}"
