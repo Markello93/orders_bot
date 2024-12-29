@@ -11,7 +11,8 @@ from api_routes.parse_utills import parse_order_message
 
 load_dotenv()
 bot_token = settings.BOT
-router = APIRouter(prefix="/v1", tags=["test API endpoints"])
+url = settings.EXTERNAL_API_URL
+router = APIRouter(prefix="/book-eat/api/v1", tags=["test API endpoints"])
 
 
 @router.put("/orders/{order_id}/status")
@@ -83,11 +84,11 @@ async def send_to_telegram(dict_data: dict):
                     [
                         {
                             "text": "✅ Взять в работу",
-                            "callback_data": f"order_confirm:{message_data['orderNumber']}",
+                            "callback_data": f"order_confirm:{message_data['id']}",
                         },
                         {
                             "text": "❌ Отменить заказ",
-                            "callback_data": f"order_cancel:{message_data['orderNumber']}",
+                            "callback_data": f"order_cancel:{message_data['id']}",
                         },
                     ]
                 ]
@@ -98,7 +99,7 @@ async def send_to_telegram(dict_data: dict):
                     [
                         {
                             "text": "✅ Выполнить заказ",
-                            "callback_data": f"order_complete:{message_data['orderNumber']}",
+                            "callback_data": f"order_complete:{message_data['id']}",
                         },
                     ]
                 ]
@@ -109,6 +110,7 @@ async def send_to_telegram(dict_data: dict):
             "chat_id": dict_data["chat_id"],
             "text": text,
             "parse_mode": "Markdown",
+            "disable_web_page_preview": True,
         }
         if inline_keyboard:
             payload["reply_markup"] = json.dumps(inline_keyboard)
@@ -234,6 +236,7 @@ async def edit_message(dict_data: dict):
             "message_id": dict_data["message_id"],
             "text": text,
             "parse_mode": "Markdown",
+            "disable_web_page_preview": True
         }
         if inline_keyboard:
             payload["reply_markup"] = json.dumps(inline_keyboard)

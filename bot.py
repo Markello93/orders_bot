@@ -120,6 +120,7 @@ async def send_request_to_url(url, params=None):
     """Отправка HTTP-запроса на внешний URL."""
     try:
         external_url = urljoin(EXTERNAL_API_URL, url)
+        print(external_url)
         if params:
             query_string = urlencode(params)
             external_url = f"{external_url}?{query_string}"
@@ -160,7 +161,7 @@ async def handle_order_callback(callback_query: types.CallbackQuery):
         status = "UNKNOWN"
         message = "Произошла ошибка при обработке статуса заказа"
 
-    url = f"/v1/orders/{order_id}/status?status={status}"
+    url = f"v1/orders/{order_id}/status?status={status}"
     response = await send_request_to_url(url)
 
     if response["success"]:

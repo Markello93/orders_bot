@@ -21,7 +21,7 @@ def escape_markdown_v2(text):
     """
     Экранирует текст для использования в Telegram Markdown V2.
     """
-    escape_chars = r"[]~`>#=|{}"
+    escape_chars = r"~`>#=|{}"
     return re.sub(r"([{}])".format(re.escape(escape_chars)), r"\\\1", text)
 
 
@@ -139,5 +139,11 @@ def parse_order_message(message_data: dict):
         f"{delivery_price_text}"
         f"💰 Итого: {message_data['totalCost']} ₽"
     )
+    order_link = message_data.get("order_link")
+    if order_link:
+        message_text += escape_markdown_v2(
+            f"\n\n[Ссылка для просмотра заказа в браузере]({order_link})"
+        ) + " "
 
     return message_text
+
