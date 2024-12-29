@@ -1,7 +1,6 @@
 import asyncio
 from urllib.parse import urlencode, urljoin
 
-import requests
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
