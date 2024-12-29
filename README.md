@@ -28,7 +28,7 @@ https://github.com/Markello93/orders_bot.git
 
 Пример:  
  ```bash
-EXTERNAL_API_URL=http://web_app:8000  
+EXTERNAL_API_URL=http://web_app:8000/  
  ```
  EXTERNAL_API_CHECK_ACCESS: url эндпоинта внешнего API для проверки авторизации.  
  ```bash
