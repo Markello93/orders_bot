@@ -77,7 +77,6 @@ def parse_order_message(message_data: dict):
                 if message_data["delivery"].get("doorCode")
                 else ""
             ),
-
         ]
         additional_info = [info for info in additional_info if info]
         if additional_info:
@@ -85,16 +84,16 @@ def parse_order_message(message_data: dict):
                 "Дополнительные сведения: " + ", ".join(additional_info)
             )
     elif delivery_type in {"TO_OUTSIDE", "ON_PLACE"}:
-        restaurant_address = message_data.get("restaurantAddress",
-                                              "Адрес ресторана не указан")
+        restaurant_address = message_data.get(
+            "restaurantAddress", "Адрес ресторана не указан"
+        )
         delivery_info.append(f"📍 Адрес ресторана: {restaurant_address}")
 
     # Формирование списка продуктов
     products = []
     for product in message_data["products"]:
         product_name = f"*{product['title']}*"
-        weight_info = f" (вес: {product['weight']})" if product.get(
-            "weight") else ""
+        weight_info = f" (вес: {product['weight']})" if product.get("weight") else ""
         product_details = f"*(х{product['amount']})* — {product['price']} ₽"
         product_line = f"▫️ {product_name}{weight_info} {product_details}"
         if product.get("additions"):
@@ -119,20 +118,27 @@ def parse_order_message(message_data: dict):
 
     # Определение статуса
     status_mapping = {
-        "CANCELLED_BY_PROVIDER":  "Отменен кассиром.",
+        "CANCELLED_BY_PROVIDER": "Отменен кассиром.",
         "CANCELLED_BY_CLIENT": "Отменен клиентом.",
         "IN_PROGRESS": "Взят в работу",
         "PAID": "Оплачен",
         "CANCELED_BY_TIMEOUT": "Заказ отменён - не был взят в работу",
-        "COMPLETED": "Выполнен"
+        "COMPLETED": "Выполнен",
     }
     status_text = status_mapping.get(
         message_data["status"], "Статус не определен"
     )
+
     delivery_price_text = ""
-    if message_data['delivery'].get("price") and delivery_type == "DELIVERY":
+    if message_data["delivery"].get("price") and delivery_type == "DELIVERY":
         delivery_price_text = f"🏎  Доставка: {message_data['delivery']['price']} ₽\n"
 
+    if message_data.get("comment"):
+        comment = f"💬  Комментарий: {message_data['comment']}\n\n"
+    else:
+        comment = "\n"
+
+    # Формирование итогового сообщения
     message_text = escape_markdown_v2(
         f"Заказ №: *{message_data['orderNumber']}*\n"
         f"🕒 Время выдачи: *{ready_time}*\n"
@@ -140,7 +146,8 @@ def parse_order_message(message_data: dict):
         f"💳 Статус заказа: *{status_text}*\n"
         f"👤 Клиент: *{message_data['customerInfo']['customerName']}* "
         f"({message_data['customerInfo']['customerPhone']})\n"
-        f"👥 Количество персон: *{message_data.get('personsCount', 'не указано')}*\n\n"
+        f"👥 Количество персон: *{message_data.get('personsCount', 'не указано')}*\n"
+        f"{comment}"
         f"📍 Место: {place_title}\n"
         f"{''.join(delivery_info)}\n\n"
         f"🛒 Состав заказа:\n"
@@ -148,11 +155,12 @@ def parse_order_message(message_data: dict):
         f"{delivery_price_text}"
         f"💰 Итого: {message_data['totalCost']} ₽"
     )
+
+    # Добавление ссылки на заказ
     order_link = message_data.get("order_link")
     if order_link:
         message_text += escape_markdown_v2(
             f"\n\n[Ссылка для просмотра заказа в браузере]({order_link})"
-        ) + " "
+        )
 
     return message_text
-
