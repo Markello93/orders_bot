@@ -1,11 +1,16 @@
 import json
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 import aiohttp
 
-from api_routes.py_models import EditChatRequest, InputData, SendChatRequest
+from api_routes.py_models import (
+    AuthRequest,
+    EditChatRequest,
+    InputData,
+    SendChatRequest,
+)
 from src.core.settings import settings
 from api_routes.parse_utills import parse_order_message
 
@@ -13,6 +18,20 @@ load_dotenv()
 bot_token = settings.BOT
 url = settings.EXTERNAL_API_URL
 router = APIRouter(prefix="/book-eat/api/v1", tags=["test API endpoints"])
+
+
+@router.post("/auth/login")
+async def login(data: AuthRequest, response: Response):
+    """Мок v1/auth/login: отдаёт куку __Host-cookie-jwt."""
+    response.set_cookie(
+        "__Host-cookie-jwt",
+        f"mock-jwt-{data.username}",
+        max_age=24 * 60 * 60,
+        path="/",
+        secure=True,
+        httponly=True,
+    )
+    return {"status": "ok"}
 
 
 @router.put("/orders/{order_id}/status")

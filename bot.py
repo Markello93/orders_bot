@@ -1,5 +1,5 @@
 import asyncio
-from urllib.parse import urlencode, urljoin
+import logging
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
@@ -11,11 +11,14 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
+from src.backend_auth import backend_auth
 from src.core.settings import settings
 from aiogram import Bot, Dispatcher, types
 from dotenv import load_dotenv
 import aiohttp
 
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 EXTERNAL_API_URL = settings.EXTERNAL_API_URL
@@ -116,23 +119,18 @@ async def ignore_messages(message: types.Message, state: FSMContext):
         )
 
 
-async def send_request_to_url(url, params=None):
-    """Отправка HTTP-запроса на внешний URL."""
+async def update_order_status(order_id: str, status: str) -> dict:
+    """PUT v1/orders/{id}/status с кукой авторизации бота."""
     try:
-        external_url = urljoin(EXTERNAL_API_URL, url)
-        if params:
-            query_string = urlencode(params)
-            external_url = f"{external_url}?{query_string}"
-        async with aiohttp.ClientSession() as session:
-            async with session.put(external_url) as response:
-                if response.status == 200:
-                    return {"success": True, "message": "Request successful"}
-                else:
-                    return {
-                        "success": False,
-                        "message": f"Failed to send request. Status: {response.status}",
-                    }
+        code, _ = await backend_auth.update_order_status(order_id, status)
+        if code == 200:
+            return {"success": True, "message": "Request successful"}
+        return {
+            "success": False,
+            "message": f"Failed to send request. Status: {code}",
+        }
     except Exception as e:
+        logger.error("Ошибка смены статуса заказа %s: %s", order_id, e)
         return {"success": False, "message": f"Error sending request: {e}"}
 
 
@@ -160,8 +158,7 @@ async def handle_order_callback(callback_query: types.CallbackQuery):
         status = "UNKNOWN"
         message = "Произошла ошибка при обработке статуса заказа"
 
-    url = f"v1/orders/{order_id}/status?status={status}"
-    response = await send_request_to_url(url)
+    response = await update_order_status(order_id, status)
 
     if response["success"]:
         await bot.send_message(callback_query.message.chat.id, message)
@@ -175,8 +172,15 @@ async def handle_order_callback(callback_query: types.CallbackQuery):
 
 
 async def main() -> None:
-
-    await dp.start_polling(bot)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    backend_auth.start()
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await backend_auth.close()
 
 
 if __name__ == "__main__":

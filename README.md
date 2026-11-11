@@ -35,6 +35,25 @@ EXTERNAL_API_URL=http://web_app:8000/
 Пример:  
 EXTERNAL_API_CHECK_ACCESS=http://web_app:8000/v1/check_access  
  ```
+### Авторизация бота в бэкенде (кука)
+Бот логинится через `POST v1/auth/login`, получает куку (живёт сутки) и с ней
+вызывает `PUT v1/orders/{id}/status` (src/backend_auth.py). Кука обновляется в фоне
+и при ответе 401/403. Если логин/пароль не заданы — запросы идут без куки.
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| BACKEND_LOGIN | пусто | логин сервисной учётки бота |
+| BACKEND_PASSWORD | пусто | пароль к ней |
+| BACKEND_AUTH_REFRESH_SECONDS | 82800 (23 ч) | как часто обновлять куку |
+| BACKEND_AUTH_COOKIE_NAME | __Host-cookie-jwt | имя куки авторизации |
+| BACKEND_AUTH_RETRY_SECONDS | 60 | пауза перед повторным логином после неудачи |
+| BACKEND_REQUEST_TIMEOUT_SECONDS | 30 | таймаут запросов к бэкенду |
+
+Обязательно заполнить только BACKEND_LOGIN и BACKEND_PASSWORD:
+```bash
+BACKEND_LOGIN=
+BACKEND_PASSWORD=
+```
 ### Получение ключа бота  
 * Перейти по ссылке в чат с BotFather https://telegram.me/BotFather  
 * напечатать команду /start  
