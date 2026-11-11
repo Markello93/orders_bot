@@ -72,10 +72,8 @@ class BackendAuthClient:
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._closed:
-            # После close() новую сессию не создаём — её уже некому закрыть.
             raise BackendAuthError("клиент авторизации закрыт")
         if self._session is None or self._session.closed:
-            # Куку передаём явно в заголовке, общий cookie jar не нужен.
             self._session = aiohttp.ClientSession(
                 cookie_jar=aiohttp.DummyCookieJar(),
                 timeout=aiohttp.ClientTimeout(total=self.timeout_seconds),
@@ -124,8 +122,6 @@ class BackendAuthClient:
         async with self._lock:
             if self._cookie:
                 return self._cookie
-            # После неудачного логина не долбим бэкенд на каждый запрос
-            # (риск блокировки учётки): ждём, пока повторит фоновая задача.
             if self._login_failed_at is not None:
                 left = self.retry_seconds - (time.monotonic() - self._login_failed_at)
                 if left > 0:
@@ -135,8 +131,6 @@ class BackendAuthClient:
             return await self._login_tracked()
 
     def _invalidate(self, cookie: str) -> None:
-        # Сбрасываем только ту куку, с которой получили 401/403,
-        # чтобы не затереть уже обновлённую параллельным запросом.
         if self._cookie == cookie:
             self._cookie = None
 
