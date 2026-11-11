@@ -68,6 +68,11 @@ class EditChatRequest(BaseModel):
     message: OrderMessage
 
 
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
+
 class InputData(BaseModel):
     phone_number: str
     user_id: int
